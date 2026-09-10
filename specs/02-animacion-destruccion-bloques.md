@@ -1,6 +1,6 @@
 # SPEC 02 — Animación de destrucción de bloques
 
-> **Status:** Draft
+> **Status:** Aprobado
 > **Depends on:** SPEC 01
 > **Date:** 2026-09-10
 > **Objective:** Al romper un bloque, reproducir sobre su lugar la animación de explosión de 4 frames del spritesheet usando `drawFrame` y `EXPLOSION_FRAMES`, sin cambiar la física ni la colisión.
