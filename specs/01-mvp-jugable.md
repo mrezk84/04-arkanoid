@@ -97,14 +97,14 @@ Convenciones:
 
 ## Acceptance criteria
 
-- [ ] `index.html` abre en el navegador sin ningún error en consola.
-- [ ] El canvas mide 800×600 px y tiene fondo negro.
-- [ ] La paleta se mueve con el mouse sin salirse del canvas.
-- [ ] La paleta se mueve con las flechas del teclado sin salirse del canvas.
-- [ ] La pelota arranca moviéndose al cargar la página.
-- [ ] La pelota rebota en las 3 paredes: izquierda, derecha y techo.
-- [ ] La pelota rebota en la paleta.
-- [ ] Se dibujan 60 bloques en una grilla de 10×6 con un color por fila.
+- [x] `index.html` abre en el navegador sin ningún error en consola.
+- [x] El canvas mide 800×600 px y tiene fondo negro.
+- [x] El paddle se mueve con el mouse sin salirse del canvas.
+- [x] El paddle se mueve con <-> sin salirse del canvas.
+- [x] La pelota arranca moviéndose al cargar la página.
+- [x] La pelota rebota en las 3 paredes: izquierda, derecha y techo.
+- [x] La pelota rebota en la paddle.
+- [x] Se dibujan 60 bloques (10×6) con sus colores por fila.
 - [ ] Al tocar un bloque, el bloque desaparece y el score sube 10 puntos.
 - [ ] El score se muestra en el HUD durante el juego.
 - [ ] Las 3 vidas se muestran en el HUD durante el juego.
