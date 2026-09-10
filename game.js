@@ -191,6 +191,10 @@ function drawOverlay( title ) {
   ctx.fillText( title, canvas.width / 2, canvas.height / 2 );
 }
 
+// Tamaño y separación de cada icono de vida en el HUD
+const LIFE_ICON = 16;
+const LIFE_GAP = 6;
+
 function drawHud() {
   ctx.fillStyle = '#fff';
   ctx.font = '16px monospace';
@@ -199,8 +203,15 @@ function drawHud() {
   ctx.textAlign = 'left';
   ctx.fillText( 'SCORE ' + state.score, 12, 12 );
 
+  // Vidas: una bola del juego por cada vida restante, en vez de un número
+  let x = canvas.width - 12 - LIFE_ICON;
+  for ( let i = 0; i < state.lives; i++ ) {
+    drawSprite( ctx, 'ball', x, 12, LIFE_ICON, LIFE_ICON );
+    x -= LIFE_ICON + LIFE_GAP;
+  }
+
   ctx.textAlign = 'right';
-  ctx.fillText( 'VIDAS ' + state.lives, canvas.width - 12, 12 );
+  ctx.fillText( 'VIDAS', x + LIFE_ICON, 12 );
 }
 
 function resetGame() {
