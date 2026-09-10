@@ -37,6 +37,9 @@ const ROW_COLORS = [ 'red', 'hotpink', 'magenta', 'cyan', 'green', 'yellow' ];
 
 const blocks = [];
 
+// Explosiones activas; una por bloque roto, se dibujan con drawFrame
+const explosions = []; // { x, y, w, h, color, start }
+
 function buildBlocks() {
   blocks.length = 0;
   for ( let row = 0; row < BLOCK_ROWS; row++ ) {
@@ -55,7 +58,7 @@ function buildBlocks() {
 
 buildBlocks();
 
-function updateBall() {
+function updateBall( now ) {
   ball.x += ball.vx;
   ball.y += ball.vy;
 
@@ -74,7 +77,7 @@ function updateBall() {
   }
 
   bounceOnPaddle();
-  bounceOnBlocks();
+  bounceOnBlocks( now );
 
   // La pelota cae por abajo: se pierde una vida
   if ( ball.y - ball.r > canvas.height ) {
@@ -84,7 +87,7 @@ function updateBall() {
   }
 }
 
-function bounceOnBlocks() {
+function bounceOnBlocks( now ) {
   for ( let i = 0; i < blocks.length; i++ ) {
     const b = blocks[ i ];
     if ( !b.alive ) continue;
@@ -94,13 +97,27 @@ function bounceOnBlocks() {
 
     if ( hit ) {
       b.alive = false;
+      explosions.push( { x: b.x, y: b.y, w: b.w, h: b.h, color: b.color, start: now } );
       ball.vy = -ball.vy;
       state.score += 10;
       break;
     }
   }
 
-  if ( blocks.every( ( b ) => !b.alive ) ) state.phase = 'win';
+  // La victoria se posterga hasta que no quede ninguna explosión en curso
+  if ( blocks.every( ( b ) => !b.alive ) && explosions.length === 0 ) state.phase = 'win';
+}
+
+// Saca del array las explosiones cuya animación ya terminó
+function updateExplosions( now ) {
+  for ( let i = explosions.length - 1; i >= 0; i-- ) {
+    if ( now - explosions[ i ].start >= EXPLOSION_DURATION ) explosions.splice( i, 1 );
+  }
+
+  // Al terminar la última explosión sin bloques vivos, recién ahí se gana
+  if ( state.phase === 'playing' && explosions.length === 0 && blocks.every( ( b ) => !b.alive ) ) {
+    state.phase = 'win';
+  }
 }
 
 // Ángulo máximo de salida respecto de la vertical, en los bordes de la paleta
@@ -162,7 +179,18 @@ function updatePaddle() {
   clampPaddle();
 }
 
-function draw() {
+// Dibuja cada explosión activa sobre el rect del bloque que la generó
+function drawExplosions( now ) {
+  for ( let i = 0; i < explosions.length; i++ ) {
+    const e = explosions[ i ];
+    let idx = Math.floor( ( now - e.start ) / ( EXPLOSION_DURATION / 4 ) );
+    if ( idx < 0 ) idx = 0;
+    if ( idx > 3 ) idx = 3;
+    drawFrame( ctx, EXPLOSION_FRAMES[ e.color ][ idx ], e.x, e.y, e.w, e.h );
+  }
+}
+
+function draw( now ) {
   ctx.fillStyle = '#000';
   ctx.fillRect( 0, 0, canvas.width, canvas.height );
 
@@ -170,6 +198,8 @@ function draw() {
     const b = blocks[ i ];
     if ( b.alive ) drawSprite( ctx, 'block_' + b.color, b.x, b.y, b.w, b.h );
   }
+
+  drawExplosions( now );
 
   drawSprite( ctx, 'paddle', paddle.x, paddle.y, paddle.w, paddle.h );
   drawSprite( ctx, 'ball', ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2 );
@@ -222,6 +252,7 @@ function resetGame() {
   paddle.x = 349;
 
   buildBlocks();
+  explosions.length = 0;
 
   ball.x = 400;
   ball.y = 300;
@@ -233,10 +264,11 @@ canvas.addEventListener( 'click', () => {
   if ( state.phase === 'gameover' || state.phase === 'win' ) resetGame();
 } );
 
-function frame() {
+function frame( now ) {
   updatePaddle();
-  if ( state.phase === 'playing' ) updateBall();
-  draw();
+  if ( state.phase === 'playing' ) updateBall( now );
+  updateExplosions( now );
+  draw( now );
   requestAnimationFrame( frame );
 }
 
