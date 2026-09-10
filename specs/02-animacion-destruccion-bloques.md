@@ -68,17 +68,17 @@ Convenciones:
 
 ## Acceptance criteria
 
-- [ ] `index.html` abre y se juega sin errores en consola.
-- [ ] Al romper un bloque se reproduce en su posición la animación de explosión de 4 frames.
-- [ ] La explosión se dibuja con `drawFrame` y `EXPLOSION_FRAMES`, no con formas dibujadas a mano.
-- [ ] La explosión ocupa el mismo rectángulo que ocupaba el bloque (72×24).
-- [ ] El color de la explosión coincide con el color del bloque roto.
-- [ ] La explosión desaparece sola al terminar la animación (`EXPLOSION_DURATION`).
-- [ ] Romper varios bloques casi a la vez muestra varias explosiones en paralelo, cada una con su propio tiempo.
-- [ ] La pelota rebota y sigue su curso en el mismo frame del impacto, sin esperar a la animación.
-- [ ] El score sigue subiendo 10 puntos por bloque en el momento del impacto.
-- [ ] Al romper el último bloque, el overlay de victoria aparece recién cuando la última explosión terminó.
-- [ ] Después de reiniciar la partida no queda ninguna explosión de la partida anterior.
+- [x] `index.html` abre y se juega sin errores en consola.
+- [x] Al romper un bloque se reproduce en su posición la animación de explosión de 4 frames.
+- [x] La explosión se dibuja con `drawFrame` y `EXPLOSION_FRAMES`, no con formas dibujadas a mano.
+- [x] La explosión ocupa el mismo rectángulo que ocupaba el bloque (72×24).
+- [x] El color de la explosión coincide con el color del bloque roto.
+- [x] La explosión desaparece sola al terminar la animación (`EXPLOSION_DURATION`).
+- [x] Romper varios bloques casi a la vez muestra varias explosiones en paralelo, cada una con su propio tiempo.
+- [x] La pelota rebota y sigue su curso en el mismo frame del impacto, sin esperar a la animación.
+- [x] El score sigue subiendo 10 puntos por bloque en el momento del impacto.
+- [x] Al romper el último bloque, el overlay de victoria aparece recién cuando la última explosión terminó.
+- [x] Después de reiniciar la partida no queda ninguna explosión de la partida anterior.
 
 ---
 
