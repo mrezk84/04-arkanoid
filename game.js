@@ -3,11 +3,54 @@
 const canvas = document.getElementById( 'game' );
 const ctx = canvas.getContext( '2d' );
 
+// Estado global de la partida
+const state = {
+  phase: 'playing', // 'playing' | 'gameover' | 'win'
+  score: 0,
+  lives: 3,
+};
+
 // Paleta: x/y es el borde superior izquierdo
 const paddle = { x: 349, y: 560, w: 102, h: 14, speed: 8 };
 
 // Pelota: x/y es el centro; velocidad constante en px/frame
 const ball = { x: 400, y: 300, r: 8, vx: 4, vy: -4 };
+
+function resetBall() {
+  ball.x = paddle.x + paddle.w / 2;
+  ball.y = paddle.y - ball.r;
+  ball.vx = 4;
+  ball.vy = -4;
+}
+
+// Grilla de bloques: 10 columnas x 6 filas, un color por fila
+const BLOCK_COLS = 10;
+const BLOCK_ROWS = 6;
+const BLOCK_W = 72;
+const BLOCK_H = 24;
+const BLOCK_MARGIN_X = 40;
+const BLOCK_TOP = 60;
+const ROW_COLORS = [ 'red', 'hotpink', 'magenta', 'cyan', 'green', 'yellow' ];
+
+const blocks = [];
+
+function buildBlocks() {
+  blocks.length = 0;
+  for ( let row = 0; row < BLOCK_ROWS; row++ ) {
+    for ( let col = 0; col < BLOCK_COLS; col++ ) {
+      blocks.push( {
+        x: BLOCK_MARGIN_X + col * BLOCK_W,
+        y: BLOCK_TOP + row * BLOCK_H,
+        w: BLOCK_W,
+        h: BLOCK_H,
+        color: ROW_COLORS[ row ],
+        alive: true,
+      } );
+    }
+  }
+}
+
+buildBlocks();
 
 function updateBall() {
   ball.x += ball.vx;
@@ -28,6 +71,33 @@ function updateBall() {
   }
 
   bounceOnPaddle();
+  bounceOnBlocks();
+
+  // La pelota cae por abajo: se pierde una vida
+  if ( ball.y - ball.r > canvas.height ) {
+    state.lives -= 1;
+    resetBall();
+    if ( state.lives === 0 ) state.phase = 'gameover';
+  }
+}
+
+function bounceOnBlocks() {
+  for ( let i = 0; i < blocks.length; i++ ) {
+    const b = blocks[ i ];
+    if ( !b.alive ) continue;
+
+    const hit = ball.x + ball.r >= b.x && ball.x - ball.r <= b.x + b.w &&
+      ball.y + ball.r >= b.y && ball.y - ball.r <= b.y + b.h;
+
+    if ( hit ) {
+      b.alive = false;
+      ball.vy = -ball.vy;
+      state.score += 10;
+      break;
+    }
+  }
+
+  if ( blocks.every( ( b ) => !b.alive ) ) state.phase = 'win';
 }
 
 // Ángulo máximo de salida respecto de la vertical, en los bordes de la paleta
@@ -93,13 +163,49 @@ function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect( 0, 0, canvas.width, canvas.height );
 
+  for ( let i = 0; i < blocks.length; i++ ) {
+    const b = blocks[ i ];
+    if ( b.alive ) drawSprite( ctx, 'block_' + b.color, b.x, b.y, b.w, b.h );
+  }
+
   drawSprite( ctx, 'paddle', paddle.x, paddle.y, paddle.w, paddle.h );
   drawSprite( ctx, 'ball', ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2 );
+
+  if ( state.phase === 'playing' ) drawHud();
+  if ( state.phase === 'gameover' ) drawOverlay( 'GAME OVER' );
+}
+
+function drawOverlay( title ) {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect( 0, 0, canvas.width, canvas.height );
+
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = '48px monospace';
+  ctx.fillText( title, canvas.width / 2, canvas.height / 2 - 40 );
+
+  ctx.font = '20px monospace';
+  ctx.fillText( 'SCORE ' + state.score, canvas.width / 2, canvas.height / 2 + 10 );
+  ctx.fillText( 'Clic para reiniciar', canvas.width / 2, canvas.height / 2 + 44 );
+}
+
+function drawHud() {
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px monospace';
+  ctx.textBaseline = 'top';
+
+  ctx.textAlign = 'left';
+  ctx.fillText( 'SCORE ' + state.score, 12, 12 );
+
+  ctx.textAlign = 'right';
+  ctx.fillText( 'VIDAS ' + state.lives, canvas.width - 12, 12 );
 }
 
 function frame() {
   updatePaddle();
-  updateBall();
+  if ( state.phase === 'playing' ) updateBall();
   draw();
   requestAnimationFrame( frame );
 }
