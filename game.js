@@ -10,17 +10,20 @@ const state = {
   lives: 3,
 };
 
+// Velocidad de la pelota en px/frame
+const BALL_SPEED = 7.5;
+
 // Paleta: x/y es el borde superior izquierdo
-const paddle = { x: 349, y: 560, w: 102, h: 14, speed: 8 };
+const paddle = { x: 349, y: 560, w: 102, h: 14, speed: 14 };
 
 // Pelota: x/y es el centro; velocidad constante en px/frame
-const ball = { x: 400, y: 300, r: 8, vx: 4, vy: -4 };
+const ball = { x: 400, y: 300, r: 8, vx: BALL_SPEED, vy: -BALL_SPEED };
 
 function resetBall() {
   ball.x = paddle.x + paddle.w / 2;
   ball.y = paddle.y - ball.r;
-  ball.vx = 4;
-  ball.vy = -4;
+  ball.vx = BALL_SPEED;
+  ball.vy = -BALL_SPEED;
 }
 
 // Grilla de bloques: 10 columnas x 6 filas, un color por fila
@@ -215,8 +218,8 @@ function resetGame() {
 
   ball.x = 400;
   ball.y = 300;
-  ball.vx = 4;
-  ball.vy = -4;
+  ball.vx = BALL_SPEED;
+  ball.vy = -BALL_SPEED;
 }
 
 canvas.addEventListener( 'click', () => {
