@@ -1,6 +1,6 @@
 # SPEC 03 — Niveles y sonido
 
-> **Status:** Borrador
+> **Status:** Aprobado
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-09-10
 > **Objective:** Agregar 3 niveles con layout de bloques propio y velocidad de pelota creciente, reproducir `ball-bounce.mp3` en rebotes y `break-sound.mp3` al romper un bloque, con mute por tecla `M`.
