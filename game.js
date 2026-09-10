@@ -188,11 +188,7 @@ function drawOverlay( title ) {
   ctx.textBaseline = 'middle';
 
   ctx.font = '48px monospace';
-  ctx.fillText( title, canvas.width / 2, canvas.height / 2 - 40 );
-
-  ctx.font = '20px monospace';
-  ctx.fillText( 'SCORE ' + state.score, canvas.width / 2, canvas.height / 2 + 10 );
-  ctx.fillText( 'Clic para reiniciar', canvas.width / 2, canvas.height / 2 + 44 );
+  ctx.fillText( title, canvas.width / 2, canvas.height / 2 );
 }
 
 function drawHud() {
