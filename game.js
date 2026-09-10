@@ -18,6 +18,32 @@ canvas.addEventListener( 'mousemove', ( e ) => {
   clampPaddle();
 } );
 
+const keys = { left: false, right: false };
+
+function isLeftKey( code ) {
+  return code === 'ArrowLeft' || code === 'KeyA';
+}
+
+function isRightKey( code ) {
+  return code === 'ArrowRight' || code === 'KeyD';
+}
+
+window.addEventListener( 'keydown', ( e ) => {
+  if ( isLeftKey( e.code ) ) keys.left = true;
+  if ( isRightKey( e.code ) ) keys.right = true;
+} );
+
+window.addEventListener( 'keyup', ( e ) => {
+  if ( isLeftKey( e.code ) ) keys.left = false;
+  if ( isRightKey( e.code ) ) keys.right = false;
+} );
+
+function updatePaddle() {
+  if ( keys.left ) paddle.x -= paddle.speed;
+  if ( keys.right ) paddle.x += paddle.speed;
+  clampPaddle();
+}
+
 function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect( 0, 0, canvas.width, canvas.height );
@@ -26,6 +52,7 @@ function draw() {
 }
 
 function frame() {
+  updatePaddle();
   draw();
   requestAnimationFrame( frame );
 }
