@@ -173,6 +173,7 @@ function draw() {
 
   if ( state.phase === 'playing' ) drawHud();
   if ( state.phase === 'gameover' ) drawOverlay( 'GAME OVER' );
+  if ( state.phase === 'win' ) drawOverlay( 'GANASTE' );
 }
 
 function drawOverlay( title ) {
@@ -202,6 +203,25 @@ function drawHud() {
   ctx.textAlign = 'right';
   ctx.fillText( 'VIDAS ' + state.lives, canvas.width - 12, 12 );
 }
+
+function resetGame() {
+  state.phase = 'playing';
+  state.score = 0;
+  state.lives = 3;
+
+  paddle.x = 349;
+
+  buildBlocks();
+
+  ball.x = 400;
+  ball.y = 300;
+  ball.vx = 4;
+  ball.vy = -4;
+}
+
+canvas.addEventListener( 'click', () => {
+  if ( state.phase === 'gameover' || state.phase === 'win' ) resetGame();
+} );
 
 function frame() {
   updatePaddle();
