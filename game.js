@@ -5,13 +5,77 @@ const ctx = canvas.getContext( '2d' );
 
 // Estado global de la partida
 const state = {
-  phase: 'playing', // 'playing' | 'gameover' | 'win'
+  phase: 'playing', // 'playing' | 'levelclear' | 'gameover' | 'win'
   score: 0,
   lives: 3,
+  level: 1,         // 1..3
 };
 
 // Velocidad de la pelota en px/frame
 const BALL_SPEED = 7.5;
+
+// Layout de cada nivel: una letra por color, '.' = hueco.
+// R red, P hotpink, M magenta, C cyan, G green, Y yellow.
+// Hasta 6 filas de hasta 10 columnas; caracteres sobrantes se ignoran.
+const LEVELS = [
+  [
+    'RRRRRRRRRR',
+    'PPPPPPPPPP',
+    'MMMMMMMMMM',
+    'CCCCCCCCCC',
+    'GGGGGGGGGG',
+    'YYYYYYYYYY',
+  ],
+  [
+    '....RR....',
+    '...PPPP...',
+    '..MMMMMM..',
+    '.CCCCCCCC.',
+    'GGGGGGGGGG',
+    'Y.Y.Y.Y.Y.',
+  ],
+  [
+    'R.R.R.R.R.',
+    '.P.P.P.P.P',
+    'C.C.C.C.C.',
+    '.M.M.M.M.M',
+    'G.G.G.G.G.',
+    '.Y.Y.Y.Y.Y',
+  ],
+];
+
+const LEVEL_LETTERS = { R: 'red', P: 'hotpink', M: 'magenta', C: 'cyan', G: 'green', Y: 'yellow' };
+const LEVEL_SPEED_STEP = 1.15;     // +15% de velocidad por nivel superado
+const LEVEL_CLEAR_DURATION = 1000; // ms que dura el overlay 'NIVEL N'
+let levelClearStart = 0;           // timestamp de rAF al entrar en 'levelclear'
+
+// Sonidos precargados; una instancia por efecto
+const SOUNDS = {
+  bounce: new Audio( 'assets/sounds/ball-bounce.mp3' ),
+  break: new Audio( 'assets/sounds/break-sound.mp3' ),
+};
+let muted = false;
+let audioUnlocked = false;
+
+// Reproduce un efecto reutilizando su instancia Audio: un disparo nuevo
+// corta el anterior. Ignora el rechazo de play() (autoplay bloqueado).
+function playSound( name ) {
+  if ( muted ) return;
+  const s = SOUNDS[ name ];
+  s.currentTime = 0;
+  s.play().catch( () => {} );
+}
+
+// Desbloquea el audio en la primera interacción del usuario: un play()/pause()
+// silencioso sobre cada Audio sortea el bloqueo de autoplay del navegador.
+function unlockAudio() {
+  if ( audioUnlocked ) return;
+  audioUnlocked = true;
+  for ( const name in SOUNDS ) {
+    const s = SOUNDS[ name ];
+    s.play().then( () => s.pause() ).catch( () => {} );
+  }
+}
 
 // Paleta: x/y es el borde superior izquierdo
 const paddle = { x: 349, y: 560, w: 102, h: 14, speed: 14 };
@@ -19,11 +83,17 @@ const paddle = { x: 349, y: 560, w: 102, h: 14, speed: 14 };
 // Pelota: x/y es el centro; velocidad constante en px/frame
 const ball = { x: 400, y: 300, r: 8, vx: BALL_SPEED, vy: -BALL_SPEED };
 
+// Velocidad de la pelota para el nivel n: base * paso ^ (n - 1)
+function levelSpeed( n ) {
+  return BALL_SPEED * LEVEL_SPEED_STEP ** ( n - 1 );
+}
+
 function resetBall() {
   ball.x = paddle.x + paddle.w / 2;
   ball.y = paddle.y - ball.r;
-  ball.vx = BALL_SPEED;
-  ball.vy = -BALL_SPEED;
+  const speed = levelSpeed( state.level );
+  ball.vx = speed;
+  ball.vy = -speed;
 }
 
 // Grilla de bloques: 10 columnas x 6 filas, un color por fila
@@ -40,23 +110,41 @@ const blocks = [];
 // Explosiones activas; una por bloque roto, se dibujan con drawFrame
 const explosions = []; // { x, y, w, h, color, start }
 
-function buildBlocks() {
+// Reconstruye `blocks` a partir de un layout de texto de LEVELS.
+// Recorre como máximo 6 filas y 10 columnas; ignora '.' y caracteres
+// que no sean una clave de LEVEL_LETTERS.
+function buildBlocks( layout ) {
   blocks.length = 0;
-  for ( let row = 0; row < BLOCK_ROWS; row++ ) {
-    for ( let col = 0; col < BLOCK_COLS; col++ ) {
+  const rows = Math.min( layout.length, BLOCK_ROWS );
+  for ( let row = 0; row < rows; row++ ) {
+    const line = layout[ row ];
+    const cols = Math.min( line.length, BLOCK_COLS );
+    for ( let col = 0; col < cols; col++ ) {
+      const color = LEVEL_LETTERS[ line[ col ] ];
+      if ( !color ) continue;
       blocks.push( {
         x: BLOCK_MARGIN_X + col * BLOCK_W,
         y: BLOCK_TOP + row * BLOCK_H,
         w: BLOCK_W,
         h: BLOCK_H,
-        color: ROW_COLORS[ row ],
+        color: color,
         alive: true,
       } );
     }
   }
 }
 
-buildBlocks();
+// Carga el nivel n (1..LEVELS.length): reconstruye los bloques desde su
+// layout, fija la velocidad de la pelota del nivel, vacía las explosiones
+// y reposiciona la pelota sobre la paleta.
+function loadLevel( n ) {
+  state.level = n;
+  buildBlocks( LEVELS[ n - 1 ] );
+  explosions.length = 0;
+  resetBall();
+}
+
+loadLevel( 1 );
 
 function updateBall( now ) {
   ball.x += ball.vx;
@@ -66,14 +154,17 @@ function updateBall( now ) {
   if ( ball.x - ball.r < 0 ) {
     ball.x = ball.r;
     ball.vx = -ball.vx;
+    playSound( 'bounce' );
   }
   if ( ball.x + ball.r > canvas.width ) {
     ball.x = canvas.width - ball.r;
     ball.vx = -ball.vx;
+    playSound( 'bounce' );
   }
   if ( ball.y - ball.r < 0 ) {
     ball.y = ball.r;
     ball.vy = -ball.vy;
+    playSound( 'bounce' );
   }
 
   bounceOnPaddle();
@@ -87,6 +178,22 @@ function updateBall( now ) {
   }
 }
 
+// Cuando no queda ningún bloque vivo y todas las explosiones terminaron:
+// si aún hay niveles por delante, pasa a la fase 'levelclear'; si era el
+// último nivel, la partida se gana.
+function checkLevelCleared( now ) {
+  if ( state.phase !== 'playing' ) return;
+  if ( explosions.length > 0 ) return;
+  if ( !blocks.every( ( b ) => !b.alive ) ) return;
+
+  if ( state.level < LEVELS.length ) {
+    state.phase = 'levelclear';
+    levelClearStart = now;
+  } else {
+    state.phase = 'win';
+  }
+}
+
 function bounceOnBlocks( now ) {
   for ( let i = 0; i < blocks.length; i++ ) {
     const b = blocks[ i ];
@@ -97,6 +204,7 @@ function bounceOnBlocks( now ) {
 
     if ( hit ) {
       b.alive = false;
+      playSound( 'break' );
       explosions.push( { x: b.x, y: b.y, w: b.w, h: b.h, color: b.color, start: now } );
       ball.vy = -ball.vy;
       state.score += 10;
@@ -104,8 +212,9 @@ function bounceOnBlocks( now ) {
     }
   }
 
-  // La victoria se posterga hasta que no quede ninguna explosión en curso
-  if ( blocks.every( ( b ) => !b.alive ) && explosions.length === 0 ) state.phase = 'win';
+  // El cambio de nivel / victoria se posterga hasta que no quede ninguna
+  // explosión en curso
+  checkLevelCleared( now );
 }
 
 // Saca del array las explosiones cuya animación ya terminó
@@ -114,10 +223,9 @@ function updateExplosions( now ) {
     if ( now - explosions[ i ].start >= EXPLOSION_DURATION ) explosions.splice( i, 1 );
   }
 
-  // Al terminar la última explosión sin bloques vivos, recién ahí se gana
-  if ( state.phase === 'playing' && explosions.length === 0 && blocks.every( ( b ) => !b.alive ) ) {
-    state.phase = 'win';
-  }
+  // Al terminar la última explosión sin bloques vivos, recién ahí se pasa
+  // de nivel (o se gana si era el último)
+  checkLevelCleared( now );
 }
 
 // Ángulo máximo de salida respecto de la vertical, en los bordes de la paleta
@@ -138,6 +246,7 @@ function bounceOnPaddle() {
     ball.vx = speed * Math.sin( angle );
     ball.vy = -speed * Math.cos( angle );
     ball.y = paddle.y - ball.r;
+    playSound( 'bounce' );
   }
 }
 
@@ -147,6 +256,7 @@ function clampPaddle() {
 }
 
 canvas.addEventListener( 'mousemove', ( e ) => {
+  unlockAudio();
   const rect = canvas.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   paddle.x = mouseX - paddle.w / 2;
@@ -164,6 +274,8 @@ function isRightKey( code ) {
 }
 
 window.addEventListener( 'keydown', ( e ) => {
+  unlockAudio();
+  if ( e.code === 'KeyM' ) muted = !muted;
   if ( isLeftKey( e.code ) ) keys.left = true;
   if ( isRightKey( e.code ) ) keys.right = true;
 } );
@@ -205,6 +317,7 @@ function draw( now ) {
   drawSprite( ctx, 'ball', ball.x - ball.r, ball.y - ball.r, ball.r * 2, ball.r * 2 );
 
   if ( state.phase === 'playing' ) drawHud();
+  if ( state.phase === 'levelclear' ) drawOverlay( 'NIVEL ' + ( state.level + 1 ) );
   if ( state.phase === 'gameover' ) drawOverlay( 'GAME OVER' );
   if ( state.phase === 'win' ) drawOverlay( 'GANASTE' );
 }
@@ -233,6 +346,9 @@ function drawHud() {
   ctx.textAlign = 'left';
   ctx.fillText( 'SCORE ' + state.score, 12, 12 );
 
+  ctx.textAlign = 'center';
+  ctx.fillText( 'NIVEL ' + state.level, canvas.width / 2, 12 );
+
   // Vidas: una bola del juego por cada vida restante, en vez de un número
   let x = canvas.width - 12 - LIFE_ICON;
   for ( let i = 0; i < state.lives; i++ ) {
@@ -248,19 +364,15 @@ function resetGame() {
   state.phase = 'playing';
   state.score = 0;
   state.lives = 3;
+  state.level = 1;
 
   paddle.x = 349;
 
-  buildBlocks();
-  explosions.length = 0;
-
-  ball.x = 400;
-  ball.y = 300;
-  ball.vx = BALL_SPEED;
-  ball.vy = -BALL_SPEED;
+  loadLevel( 1 );
 }
 
 canvas.addEventListener( 'click', () => {
+  unlockAudio();
   if ( state.phase === 'gameover' || state.phase === 'win' ) resetGame();
 } );
 
@@ -268,6 +380,13 @@ function frame( now ) {
   updatePaddle();
   if ( state.phase === 'playing' ) updateBall( now );
   updateExplosions( now );
+
+  // Fin del overlay 'NIVEL N': carga el siguiente nivel y vuelve a jugar
+  if ( state.phase === 'levelclear' && now - levelClearStart >= LEVEL_CLEAR_DURATION ) {
+    loadLevel( state.level + 1 );
+    state.phase = 'playing';
+  }
+
   draw( now );
   requestAnimationFrame( frame );
 }
