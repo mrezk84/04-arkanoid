@@ -1,9 +1,9 @@
 # SPEC 03 — Niveles y sonido
 
-> **Status:** Aprobado
+> **Status:** Draft
 > **Depends on:** SPEC 01, SPEC 02
-> **Date:** 2026-09-10
-> **Objective:** Agregar 3 niveles con layout de bloques propio y velocidad de pelota creciente, reproducir `ball-bounce.mp3` en rebotes y `break-sound.mp3` al romper un bloque, con mute por tecla `M`.
+> **Date:** 2026-09-11
+> **Objective:** Agregar 3 niveles con layouts de bloques distintos entre sí (tablero de ajedrez, muro con hueco y rombo, todos con varios colores) y velocidad de pelota creciente, reproducir `ball-bounce.mp3` en rebotes y `break-sound.mp3` al romper un bloque con mute por tecla `M`, pausar el juego con `P` o `Escape` mostrando un selector de nivel con botones numerados, y mostrar `COMPLETASTE EL JUEGO` al terminar el nivel 3.
 
 ---
 
@@ -25,19 +25,28 @@
 - `break` suena al destruir un bloque.
 - Mute: la tecla `M` alterna `muted` (arranca con sonido, sin persistencia, sin indicador en el HUD).
 - Desbloqueo de audio: en el primer `mousemove`, `keydown` o `click` se hace un `play()`/`pause()` silencioso sobre cada `Audio` para sortear el bloqueo de autoplay del navegador.
+- Los 3 layouts definitivos de `LEVELS`: nivel 1 tablero de ajedrez multicolor, nivel 2 muro con un hueco central rodeado de bloques de varios colores, nivel 3 rombo/diamante; cada uno combina varias de las 6 letras de color.
+- Overlay de victoria con el texto `COMPLETASTE EL JUEGO` (reemplaza a `GANASTE`); el resto del comportamiento (clic reinicia desde el nivel 1) no cambia.
+- Nueva fase `state.phase = 'paused'`: la tecla `P` o la tecla `Escape` (cualquiera de las dos, no una combinación) alterna entre `'playing'` y `'paused'`; en cualquier otra fase esas teclas no hacen nada. Congelada igual que `'levelclear'`/`'gameover'`/`'win'`: `updateBall` no corre mientras `state.phase === 'paused'`.
+- Overlay de pausa: texto `PAUSA` y 3 botones numerados (`1`, `2`, `3`), uno por nivel.
+- Clic sobre un botón numerado durante la pausa: llama `loadLevel( n )` para ese nivel (reconstruye bloques con su layout y fija su velocidad), conserva `score` y `lives`, y vuelve a `state.phase = 'playing'`.
 
 **Out of scope (for future specs):**
 
 - Más de 3 niveles, editor de niveles o carga de niveles desde archivo externo.
 - Bloques grises indestructibles o bloques de varios golpes.
 - Sonido de rebote en un bloque que se rompe (ese impacto sólo dispara `break`).
-- Sonido de pérdida de vida, game over, victoria o cambio de nivel.
+- Sonido de pérdida de vida, game over, victoria, cambio de nivel, pausa o selección de nivel.
 - Música de fondo.
 - Indicador visual de mute en el HUD y persistencia de la preferencia de mute.
 - Récord persistente, mostrar el score final en el overlay de victoria.
 - Bonus de score por terminar un nivel o por vidas restantes.
 - Pantalla previa de "clic para empezar" (el arranque en movimiento del SPEC 01 no cambia).
 - Aumento de velocidad de la pelota dentro de un mismo nivel.
+- Pausar (o abrir el selector de nivel) durante `'levelclear'`, `'gameover'` o `'win'`.
+- Indicador de qué nivel está actualmente activo dentro del selector (resaltar el botón del nivel en curso).
+- Persistir el nivel elegido entre recargas de página.
+- Combinación simultánea de `P` + `Escape` como gesto distinto a cualquiera de las dos por separado.
 
 ---
 
@@ -46,9 +55,9 @@
 Todo en memoria dentro de `game.js`. No hay persistencia.
 
 ```js
-// state gana un campo de nivel; 'levelclear' es una fase nueva
+// state gana un campo de nivel; 'levelclear' y 'paused' son fases nuevas
 const state = {
-  phase: 'playing', // 'playing' | 'levelclear' | 'gameover' | 'win'
+  phase: 'playing', // 'playing' | 'levelclear' | 'paused' | 'gameover' | 'win'
   score: 0,
   lives: 3,
   level: 1,         // 1..3
@@ -57,9 +66,30 @@ const state = {
 // Layout de cada nivel: letra por color, '.' = hueco
 // R red, P hotpink, M magenta, C cyan, G green, Y yellow
 const LEVELS = [
-  [ /* nivel 1: hasta 6 strings de hasta 10 chars */ ],
-  [ /* nivel 2 */ ],
-  [ /* nivel 3 */ ],
+  [ // nivel 1: tablero de ajedrez multicolor, sin huecos
+    'RCRCRCRCRC',
+    'CRCRCRCRCR',
+    'YMYMYMYMYM',
+    'MYMYMYMYMY',
+    'GPGPGPGPGP',
+    'PGPGPGPGPG',
+  ],
+  [ // nivel 2: muro con hueco central (3 filas x 4 columnas), colores en diagonal
+    'RYMCGPRYMC',
+    'YM....PRYM',
+    'MC....GPRY',
+    'CG....RYMC',
+    'GPRYMCGPRY',
+    'PRYMCGPRYM',
+  ],
+  [ // nivel 3: rombo/diamante, un color por anillo
+    '....RR....',
+    '...YYYY...',
+    '..MMMMMM..',
+    '..CCCCCC..',
+    '...GGGG...',
+    '....PP....',
+  ],
 ];
 
 const LEVEL_LETTERS = { R: 'red', P: 'hotpink', M: 'magenta', C: 'cyan', G: 'green', Y: 'yellow' };
@@ -74,6 +104,9 @@ const SOUNDS = {
 let muted = false;
 let audioUnlocked = false;
 let levelClearStart = 0; // timestamp de requestAnimationFrame al entrar en 'levelclear'
+
+// Botones del selector de nivel dentro del overlay de pausa; { n, x, y, w, h }
+const LEVEL_BUTTONS = [ /* 3 rectángulos fijos, uno por nivel, centrados debajo de 'PAUSA' */ ];
 ```
 
 Convenciones:
@@ -84,6 +117,8 @@ Convenciones:
 - Velocidad del nivel `n`: `BALL_SPEED * LEVEL_SPEED_STEP ** ( n - 1 )`. `resetBall()` usa esa velocidad, no `BALL_SPEED` fijo.
 - `playSound` reutiliza la misma instancia `Audio` por efecto; un disparo nuevo corta el anterior (`currentTime = 0`).
 - El objeto `block` no cambia respecto del SPEC 01; el array `explosions` no cambia respecto del SPEC 02.
+- `P` y `Escape` sólo tienen efecto en las fases `'playing'` y `'paused'`; en `'levelclear'`, `'gameover'` o `'win'` se ignoran.
+- El clic sobre un botón de `LEVEL_BUTTONS` sólo se evalúa cuando `state.phase === 'paused'`; en las demás fases el handler de `click` sigue su lógica actual (reinicio en `'gameover'`/`'win'`).
 
 ---
 
