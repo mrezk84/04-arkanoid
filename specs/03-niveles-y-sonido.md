@@ -11,7 +11,8 @@
 
 **In:**
 
-- Array `LEVELS` en `game.js` con 3 niveles, cada uno un array de hasta 6 strings de hasta 10 caracteres (una letra por color, `.` = hueco).
+- Nuevo archivo `levels.js` en la raíz del proyecto (junto a `game.js`, `index.html`), cargado con `<script src="levels.js"></script>` antes de `game.js` en `index.html` — mismo patrón sin módulos que `assets/spritesheet.js`.
+- Array `LEVELS` en `levels.js` con 3 niveles, cada uno un array de hasta 6 strings de hasta 10 caracteres (una letra por color, `.` = hueco). `LEVEL_LETTERS`, `LEVEL_SPEED_STEP` y `LEVEL_CLEAR_DURATION` también viven en `levels.js`, como variables globales que `game.js` consume igual que consume `SPRITES` de `assets/spritesheet.js`.
 - Función `loadLevel( n )` que reconstruye `blocks` a partir de `LEVELS[ n - 1 ]`, fija la velocidad de la pelota del nivel, vacía `explosions` y reposiciona la pelota sobre la paleta.
 - Campo `state.level` (`1`, `2`, `3`).
 - Velocidad de la pelota por nivel: `BALL_SPEED` base del nivel 1, multiplicada por `LEVEL_SPEED_STEP` una vez por cada nivel superado.
@@ -25,7 +26,7 @@
 - `break` suena al destruir un bloque.
 - Mute: la tecla `M` alterna `muted` (arranca con sonido, sin persistencia, sin indicador en el HUD).
 - Desbloqueo de audio: en el primer `mousemove`, `keydown` o `click` se hace un `play()`/`pause()` silencioso sobre cada `Audio` para sortear el bloqueo de autoplay del navegador.
-- Los 3 layouts definitivos de `LEVELS`: nivel 1 tablero de ajedrez multicolor, nivel 2 muro con un hueco central rodeado de bloques de varios colores, nivel 3 rombo/diamante; cada uno combina varias de las 6 letras de color.
+- Los 3 layouts definitivos de `LEVELS` (en `levels.js`): nivel 1 tablero de ajedrez multicolor, nivel 2 muro con un hueco central rodeado de bloques de varios colores, nivel 3 rombo/diamante; cada uno combina varias de las 6 letras de color.
 - Overlay de victoria con el texto `COMPLETASTE EL JUEGO` (reemplaza a `GANASTE`); el resto del comportamiento (clic reinicia desde el nivel 1) no cambia.
 - Nueva fase `state.phase = 'paused'`: la tecla `P` o la tecla `Escape` (cualquiera de las dos, no una combinación) alterna entre `'playing'` y `'paused'`; en cualquier otra fase esas teclas no hacen nada. Congelada igual que `'levelclear'`/`'gameover'`/`'win'`: `updateBall` no corre mientras `state.phase === 'paused'`.
 - Overlay de pausa: texto `PAUSA` y 3 botones numerados (`1`, `2`, `3`), uno por nivel.
@@ -52,16 +53,10 @@
 
 ## Data model
 
-Todo en memoria dentro de `game.js`. No hay persistencia.
+Todo en memoria, sin persistencia. Los niveles viven en un archivo nuevo, `levels.js`; el resto de la lógica en `game.js`.
 
 ```js
-// state gana un campo de nivel; 'levelclear' y 'paused' son fases nuevas
-const state = {
-  phase: 'playing', // 'playing' | 'levelclear' | 'paused' | 'gameover' | 'win'
-  score: 0,
-  lives: 3,
-  level: 1,         // 1..3
-};
+// levels.js — variables globales, sin módulos; se carga antes que game.js
 
 // Layout de cada nivel: letra por color, '.' = hueco
 // R red, P hotpink, M magenta, C cyan, G green, Y yellow
@@ -95,6 +90,18 @@ const LEVELS = [
 const LEVEL_LETTERS = { R: 'red', P: 'hotpink', M: 'magenta', C: 'cyan', G: 'green', Y: 'yellow' };
 const LEVEL_SPEED_STEP = 1.15;     // +15% de velocidad por nivel superado
 const LEVEL_CLEAR_DURATION = 1000; // ms que dura el overlay 'NIVEL N'
+```
+
+```js
+// game.js — consume las globales de levels.js igual que consume SPRITES de spritesheet.js
+
+// state gana un campo de nivel; 'levelclear' y 'paused' son fases nuevas
+const state = {
+  phase: 'playing', // 'playing' | 'levelclear' | 'paused' | 'gameover' | 'win'
+  score: 0,
+  lives: 3,
+  level: 1,         // 1..3
+};
 
 // Sonidos precargados; una instancia por efecto
 const SOUNDS = {
@@ -111,6 +118,7 @@ const LEVEL_BUTTONS = [ /* 3 rectángulos fijos, uno por nivel, centrados debajo
 
 Convenciones:
 
+- `levels.js` se carga con un `<script>` global antes de `game.js` en `index.html`; no usa `export`/`import`, igual que `assets/spritesheet.js`. `LEVELS`, `LEVEL_LETTERS`, `LEVEL_SPEED_STEP` y `LEVEL_CLEAR_DURATION` quedan disponibles como globales para `game.js`.
 - La grilla sigue siendo 10 columnas × 6 filas como máximo, con el mismo origen que el SPEC 01: `x = BLOCK_MARGIN_X + col * BLOCK_W`, `y = BLOCK_TOP + row * BLOCK_H`, bloque de 72×24.
 - Fila `row` = string `row` del layout; columna `col` = carácter `col` de ese string. Un carácter `.` o ausente no genera bloque.
 - Cada letra del layout es una clave de `LEVEL_LETTERS`; el valor es un color válido de `ROW_COLORS` y de `EXPLOSION_FRAMES`.
@@ -138,17 +146,19 @@ Convenciones:
 12. Llamar `playSound( 'bounce' )` en los 3 rebotes de pared de `updateBall()` y en el rebote de `bounceOnPaddle()`. Test manual: se escucha el rebote contra paredes y paleta.
 13. Llamar `playSound( 'break' )` dentro de `bounceOnBlocks()` en el mismo `if ( hit )` donde se marca `b.alive = false`. Test manual: se escucha el sonido al romper un bloque.
 14. Agregar en `keydown` el toggle: si `e.code === 'KeyM'`, `muted = !muted`. Test manual: con `M` se corta y se reactiva todo el audio.
-15. Reemplazar el contenido de `LEVELS` por los 3 layouts definitivos del modelo de datos (ajedrez, muro con hueco, rombo). Test manual: jugar los 3 niveles y confirmar visualmente cada patrón y que combinan varios colores.
-16. Cambiar `drawOverlay( 'GANASTE' )` por `drawOverlay( 'COMPLETASTE EL JUEGO' )`. Test manual: al limpiar el nivel 3 el overlay dice `COMPLETASTE EL JUEGO`; el clic sigue reiniciando desde el nivel 1.
-17. Agregar `'paused'` a la unión de `state.phase`. En el handler de `keydown`, si `e.code === 'KeyP'` o `e.code === 'Escape'`: si `state.phase === 'playing'` pasa a `'paused'`; si `state.phase === 'paused'` vuelve a `'playing'`; en cualquier otro valor de `state.phase` no hace nada. Test manual: apretar `P` o `Escape` en pleno juego congela la pelota (ya no se mueve porque `frame()` sólo llama `updateBall` en `'playing'`); volver a apretar cualquiera de las dos la reanuda donde estaba.
-18. Definir `LEVEL_BUTTONS` con 3 rectángulos fijos (uno por nivel, centrados en fila debajo del título). Agregar `drawPauseOverlay()` que reutiliza el fondo semitransparente de `drawOverlay`, dibuja el texto `PAUSA` y los 3 botones numerados (`1`, `2`, `3`) de `LEVEL_BUTTONS`. Llamarla desde `draw()` cuando `state.phase === 'paused'`. Test manual: al pausar se ve `PAUSA` con tres botones `1 2 3`.
-19. En el handler de `click` del canvas, cuando `state.phase === 'paused'`, revisar si el punto cae dentro de algún rectángulo de `LEVEL_BUTTONS`; si es así, llamar `loadLevel( n )` para ese nivel (sin tocar `score` ni `lives`) y volver a `state.phase = 'playing'`. Test manual: clic en el botón `2` durante la pausa carga el nivel 2 con su layout y velocidad propios, conserva el score/vidas actuales, y el juego se reanuda.
+15. Crear `levels.js` en la raíz del proyecto: mover ahí `LEVELS` (con los layouts placeholder actuales, sin cambiar su contenido todavía), `LEVEL_LETTERS`, `LEVEL_SPEED_STEP` y `LEVEL_CLEAR_DURATION`, borrándolos de `game.js`. Agregar `<script src="levels.js"></script>` en `index.html` antes de `<script src="game.js"></script>`. Test manual: la página carga y se juega igual que antes, sin errores en consola.
+16. Reemplazar el contenido de `LEVELS` (en `levels.js`) por los 3 layouts definitivos del modelo de datos (ajedrez, muro con hueco, rombo). Test manual: jugar los 3 niveles y confirmar visualmente cada patrón y que combinan varios colores.
+17. Cambiar `drawOverlay( 'GANASTE' )` por `drawOverlay( 'COMPLETASTE EL JUEGO' )`. Test manual: al limpiar el nivel 3 el overlay dice `COMPLETASTE EL JUEGO`; el clic sigue reiniciando desde el nivel 1.
+18. Agregar `'paused'` a la unión de `state.phase`. En el handler de `keydown`, si `e.code === 'KeyP'` o `e.code === 'Escape'`: si `state.phase === 'playing'` pasa a `'paused'`; si `state.phase === 'paused'` vuelve a `'playing'`; en cualquier otro valor de `state.phase` no hace nada. Test manual: apretar `P` o `Escape` en pleno juego congela la pelota (ya no se mueve porque `frame()` sólo llama `updateBall` en `'playing'`); volver a apretar cualquiera de las dos la reanuda donde estaba.
+19. Definir `LEVEL_BUTTONS` con 3 rectángulos fijos (uno por nivel, centrados en fila debajo del título). Agregar `drawPauseOverlay()` que reutiliza el fondo semitransparente de `drawOverlay`, dibuja el texto `PAUSA` y los 3 botones numerados (`1`, `2`, `3`) de `LEVEL_BUTTONS`. Llamarla desde `draw()` cuando `state.phase === 'paused'`. Test manual: al pausar se ve `PAUSA` con tres botones `1 2 3`.
+20. En el handler de `click` del canvas, cuando `state.phase === 'paused'`, revisar si el punto cae dentro de algún rectángulo de `LEVEL_BUTTONS`; si es así, llamar `loadLevel( n )` para ese nivel (sin tocar `score` ni `lives`) y volver a `state.phase = 'playing'`. Test manual: clic en el botón `2` durante la pausa carga el nivel 2 con su layout y velocidad propios, conserva el score/vidas actuales, y el juego se reanuda.
 
 ---
 
 ## Acceptance criteria
 
 - [ ] `index.html` abre y se juega sin errores en consola.
+- [ ] `LEVELS`, `LEVEL_LETTERS`, `LEVEL_SPEED_STEP` y `LEVEL_CLEAR_DURATION` están definidos en `levels.js`, no en `game.js`; `index.html` carga `levels.js` antes que `game.js`.
 - [ ] El juego arranca en el nivel 1 y el HUD muestra `NIVEL 1`.
 - [ ] Cada uno de los 3 niveles tiene un layout de bloques distinto al de los otros dos.
 - [ ] Al limpiar todos los bloques de un nivel que no es el último, aparece el overlay `NIVEL N` con el número del nivel siguiente.
@@ -207,6 +217,9 @@ Convenciones:
 - **Sí:** la pausa congela la simulación igual que `'levelclear'`/`'gameover'`/`'win'` (`updateBall` no corre). Recomendación aceptada; reutiliza el mecanismo ya existente en `frame()`.
 - **No:** pausar o abrir el selector durante `'levelclear'`, `'gameover'` o `'win'`. Esas fases ya tienen su propio overlay y flujo de clic; agregar pausa ahí complicaría sin necesidad real.
 - **No:** resaltar en el selector el botón del nivel actualmente en curso. No se pidió y no aporta a la función principal (saltar de nivel rápido).
+- **Sí:** `LEVELS`, `LEVEL_LETTERS`, `LEVEL_SPEED_STEP` y `LEVEL_CLEAR_DURATION` en un archivo nuevo `levels.js`, no en `game.js`. Elección explícita del usuario; separa el contenido de los niveles (qué es cada nivel) de la lógica que los usa (game.js).
+- **Sí:** `levels.js` como script global sin módulos, cargado antes de `game.js` en `index.html`. Mismo patrón zero-dependencias que ya usa `assets/spritesheet.js`; no hace falta `type="module"` ni bundler.
+- **No:** mover a `levels.js` sólo `LEVELS`/`LEVEL_LETTERS` dejando `LEVEL_SPEED_STEP`/`LEVEL_CLEAR_DURATION` en `game.js`. Las cuatro constantes describen "qué es un nivel y cómo se progresa entre ellos"; separarlas dejaría la definición de niveles repartida en dos archivos.
 
 ---
 
@@ -221,6 +234,7 @@ Convenciones:
 | `LEVEL_SPEED_STEP` acumulado deja la pelota tan rápida que hace túnel a través de bloques o paleta. | Con 3 niveles el factor máximo es `1.15 ** 2 ≈ 1.32`; la colisión por solapamiento de rectángulos del SPEC 01 tolera ese rango. |
 | El clic en un botón de `LEVEL_BUTTONS` durante la pausa se confunde con el clic de reinicio de `'gameover'`/`'win'`. | El handler de `click` distingue por `state.phase`; cada fase sólo evalúa sus propias coordenadas (botones en `'paused'`, reinicio en `'gameover'`/`'win'`). |
 | Pausar justo cuando termina una explosión o empieza `'levelclear'` deja al jugador en un estado inconsistente. | `P`/`Escape` sólo actúan sobre `'playing'` y `'paused'`; en `'levelclear'` se ignoran, así que la transición automática de nivel sigue su curso sin interferencia. |
+| Si `levels.js` se carga después de `game.js` (o no se agrega el `<script>`), `LEVELS`/`LEVEL_LETTERS`/etc. quedan `undefined` y el juego rompe al arrancar. | `index.html` carga `<script src="levels.js">` antes de `<script src="game.js">`, mismo orden que ya usa `assets/spritesheet.js`; el paso 15 del plan verifica con test manual que el juego sigue cargando sin errores. |
 
 ---
 
