@@ -249,9 +249,22 @@ window.addEventListener( 'keydown', ( e ) => {
     if ( state.phase === 'playing' ) state.phase = 'paused';
     else if ( state.phase === 'paused' ) state.phase = 'playing';
   }
+  if ( state.phase === 'paused' ) {
+    const n = levelNumberFromKey( e.code );
+    if ( n !== null && n <= LEVELS.length ) {
+      loadLevel( n );
+      state.phase = 'playing';
+    }
+  }
   if ( isLeftKey( e.code ) ) keys.left = true;
   if ( isRightKey( e.code ) ) keys.right = true;
 } );
+
+// Mapea las teclas numéricas (fila superior o numpad) 1-5 al número de nivel
+function levelNumberFromKey( code ) {
+  const digit = code.match( /^(?:Digit|Numpad)([1-5])$/ );
+  return digit ? Number( digit[ 1 ] ) : null;
+}
 
 window.addEventListener( 'keyup', ( e ) => {
   if ( isLeftKey( e.code ) ) keys.left = false;
@@ -325,10 +338,15 @@ const LEVEL_BUTTONS = LEVELS.map( ( _, i ) => {
   };
 } );
 
+const LEVEL_SKIP_LABEL = 'Saltar a nivel:';
+
 // Overlay de pausa: reutiliza el fondo + título de drawOverlay y agrega
-// el selector de nivel numerado debajo.
+// el texto de ayuda y el selector de nivel numerado debajo.
 function drawPauseOverlay() {
   drawOverlay( 'PAUSA' );
+
+  ctx.font = '20px monospace';
+  ctx.fillText( LEVEL_SKIP_LABEL, canvas.width / 2, canvas.height / 2 + 30 );
 
   ctx.font = '28px monospace';
   for ( let i = 0; i < LEVEL_BUTTONS.length; i++ ) {

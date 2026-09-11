@@ -29,6 +29,22 @@ const LEVELS = [
     '...GGGG...',
     '....PP....',
   ],
+  [ // nivel 4: dos columnas verticales separadas, un color por columna
+    'RR......YY',
+    'RR......YY',
+    'RR......YY',
+    'RR......YY',
+    'RR......YY',
+    'RR......YY',
+  ],
+  [ // nivel 5: cruz centrada, un color por brazo
+    '...MMMM...',
+    '...MMMM...',
+    'CCCCGGCCCC',
+    'CCCCGGCCCC',
+    '...PPPP...',
+    '...PPPP...',
+  ],
 ];
 
 const LEVEL_LETTERS = { R: 'red', P: 'hotpink', M: 'magenta', C: 'cyan', G: 'green', Y: 'yellow' };
