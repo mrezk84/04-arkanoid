@@ -3,6 +3,7 @@
 > **Status:** Aprobado
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-09-11
+> **Amendment (2026-09-11):** los 3 layouts y el `LEVEL_SPEED_STEP` (+15%) descriptos en este documento son los del plan original. La implementación final en `levels.js` tiene 5 niveles (parrilla completa, pirámide descentrada, ajedrez, filas con huecos, marco + cruz central) y un multiplicador de velocidad fijo por nivel (`LEVEL_SPEED_MULTIPLIERS = [1, 1.1, 1.2, 1.33, 1.46]`) en vez de una progresión geométrica. Ver `levels.js` como fuente de verdad.
 > **Objective:** Agregar 3 niveles con layouts de bloques distintos entre sí (tablero de ajedrez, muro con hueco y rombo, todos con varios colores) y velocidad de pelota creciente, reproducir `ball-bounce.mp3` en rebotes y `break-sound.mp3` al romper un bloque con mute por tecla `M`, pausar el juego con `P` o `Escape` mostrando un selector de nivel con botones numerados, y mostrar `COMPLETASTE EL JUEGO` al terminar el nivel 3.
 
 ---

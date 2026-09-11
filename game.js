@@ -14,8 +14,8 @@ const state = {
 // Velocidad de la pelota en px/frame
 const BALL_SPEED = 5.5;
 
-// LEVELS, LEVEL_LETTERS, LEVEL_SPEED_STEP y LEVEL_CLEAR_DURATION viven en
-// levels.js (cargado antes que este archivo en index.html).
+// LEVELS, LEVEL_LETTERS, LEVEL_SPEED_MULTIPLIERS y LEVEL_CLEAR_DURATION viven
+// en levels.js (cargado antes que este archivo en index.html).
 let levelClearStart = 0; // timestamp de rAF al entrar en 'levelclear'
 
 // Sonidos precargados; una instancia por efecto
@@ -52,9 +52,9 @@ const paddle = { x: 375, y: 560, w: 51, h: 7, speed: 14 };
 // Pelota: x/y es el centro; velocidad constante en px/frame
 const ball = { x: 400, y: 300, r: 8, vx: BALL_SPEED, vy: -BALL_SPEED };
 
-// Velocidad de la pelota para el nivel n: base * paso ^ (n - 1)
+// Velocidad de la pelota para el nivel n: base * multiplicador fijo del nivel
 function levelSpeed( n ) {
-  return BALL_SPEED * LEVEL_SPEED_STEP ** ( n - 1 );
+  return BALL_SPEED * LEVEL_SPEED_MULTIPLIERS[ n - 1 ];
 }
 
 function resetBall() {
