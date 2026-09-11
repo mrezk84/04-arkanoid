@@ -12,7 +12,7 @@ const state = {
 };
 
 // Velocidad de la pelota en px/frame
-const BALL_SPEED = 7.5;
+const BALL_SPEED = 5.5;
 
 // LEVELS, LEVEL_LETTERS, LEVEL_SPEED_STEP y LEVEL_CLEAR_DURATION viven en
 // levels.js (cargado antes que este archivo en index.html).
@@ -47,7 +47,7 @@ function unlockAudio() {
 }
 
 // Paleta: x/y es el borde superior izquierdo
-const paddle = { x: 349, y: 560, w: 102, h: 14, speed: 14 };
+const paddle = { x: 375, y: 560, w: 51, h: 7, speed: 14 };
 
 // Pelota: x/y es el centro; velocidad constante en px/frame
 const ball = { x: 400, y: 300, r: 8, vx: BALL_SPEED, vy: -BALL_SPEED };
@@ -68,9 +68,9 @@ function resetBall() {
 // Grilla de bloques: 10 columnas x 6 filas, un color por fila
 const BLOCK_COLS = 10;
 const BLOCK_ROWS = 6;
-const BLOCK_W = 72;
-const BLOCK_H = 24;
-const BLOCK_MARGIN_X = 40;
+const BLOCK_W = 78;
+const BLOCK_H = 28;
+const BLOCK_MARGIN_X = ( canvas.width - BLOCK_COLS * BLOCK_W ) / 2;
 const BLOCK_TOP = 60;
 const ROW_COLORS = [ 'red', 'hotpink', 'magenta', 'cyan', 'green', 'yellow' ];
 
@@ -390,7 +390,7 @@ function resetGame() {
   state.lives = 3;
   state.level = 1;
 
-  paddle.x = 349;
+  paddle.x = 375;
 
   loadLevel( 1 );
 }

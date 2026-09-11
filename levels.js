@@ -21,32 +21,32 @@ const LEVELS = [
     'GPRYMCGPRY',
     'PRYMCGPRYM',
   ],
-  [ // nivel 3: rombo/diamante, un color por anillo
+  [ // nivel 3: pirámide, se ensancha hacia abajo, un color por franja
     '....RR....',
-    '...YYYY...',
-    '..MMMMMM..',
-    '..CCCCCC..',
-    '...GGGG...',
+    '...RRRR...',
+    '..YYYYYY..',
+    '.YYYYYYYY.',
+    'GGGGGGGGGG',
+    'GGGGGGGGGG',
+  ],
+  [ // nivel 4: tablero de ajedrez de 2 colores, mismo patrón en las 6 filas
+    'CMCMCMCMCM',
+    'MCMCMCMCMC',
+    'CMCMCMCMCM',
+    'MCMCMCMCMC',
+    'CMCMCMCMCM',
+    'MCMCMCMCMC',
+  ],
+  [ // nivel 5: reloj de arena, dos pirámides opuestas
+    'RRRRRRRRRR',
+    '..RRRRRR..',
+    '....RR....',
     '....PP....',
-  ],
-  [ // nivel 4: dos columnas verticales separadas, un color por columna
-    'RR......YY',
-    'RR......YY',
-    'RR......YY',
-    'RR......YY',
-    'RR......YY',
-    'RR......YY',
-  ],
-  [ // nivel 5: cruz centrada, un color por brazo
-    '...MMMM...',
-    '...MMMM...',
-    'CCCCGGCCCC',
-    'CCCCGGCCCC',
-    '...PPPP...',
-    '...PPPP...',
+    '..PPPPPP..',
+    'PPPPPPPPPP',
   ],
 ];
 
 const LEVEL_LETTERS = { R: 'red', P: 'hotpink', M: 'magenta', C: 'cyan', G: 'green', Y: 'yellow' };
-const LEVEL_SPEED_STEP = 1.15;     // +15% de velocidad por nivel superado
+const LEVEL_SPEED_STEP = 1.1;      // +10% de velocidad por nivel superado
 const LEVEL_CLEAR_DURATION = 1000; // ms que dura el overlay 'NIVEL N'
