@@ -1,6 +1,6 @@
 # SPEC 03 — Niveles y sonido
 
-> **Status:** Draft
+> **Status:** Aprobado
 > **Depends on:** SPEC 01, SPEC 02
 > **Date:** 2026-09-11
 > **Objective:** Agregar 3 niveles con layouts de bloques distintos entre sí (tablero de ajedrez, muro con hueco y rombo, todos con varios colores) y velocidad de pelota creciente, reproducir `ball-bounce.mp3` en rebotes y `break-sound.mp3` al romper un bloque con mute por tecla `M`, pausar el juego con `P` o `Escape` mostrando un selector de nivel con botones numerados, y mostrar `COMPLETASTE EL JUEGO` al terminar el nivel 3.
@@ -138,6 +138,11 @@ Convenciones:
 12. Llamar `playSound( 'bounce' )` en los 3 rebotes de pared de `updateBall()` y en el rebote de `bounceOnPaddle()`. Test manual: se escucha el rebote contra paredes y paleta.
 13. Llamar `playSound( 'break' )` dentro de `bounceOnBlocks()` en el mismo `if ( hit )` donde se marca `b.alive = false`. Test manual: se escucha el sonido al romper un bloque.
 14. Agregar en `keydown` el toggle: si `e.code === 'KeyM'`, `muted = !muted`. Test manual: con `M` se corta y se reactiva todo el audio.
+15. Reemplazar el contenido de `LEVELS` por los 3 layouts definitivos del modelo de datos (ajedrez, muro con hueco, rombo). Test manual: jugar los 3 niveles y confirmar visualmente cada patrón y que combinan varios colores.
+16. Cambiar `drawOverlay( 'GANASTE' )` por `drawOverlay( 'COMPLETASTE EL JUEGO' )`. Test manual: al limpiar el nivel 3 el overlay dice `COMPLETASTE EL JUEGO`; el clic sigue reiniciando desde el nivel 1.
+17. Agregar `'paused'` a la unión de `state.phase`. En el handler de `keydown`, si `e.code === 'KeyP'` o `e.code === 'Escape'`: si `state.phase === 'playing'` pasa a `'paused'`; si `state.phase === 'paused'` vuelve a `'playing'`; en cualquier otro valor de `state.phase` no hace nada. Test manual: apretar `P` o `Escape` en pleno juego congela la pelota (ya no se mueve porque `frame()` sólo llama `updateBall` en `'playing'`); volver a apretar cualquiera de las dos la reanuda donde estaba.
+18. Definir `LEVEL_BUTTONS` con 3 rectángulos fijos (uno por nivel, centrados en fila debajo del título). Agregar `drawPauseOverlay()` que reutiliza el fondo semitransparente de `drawOverlay`, dibuja el texto `PAUSA` y los 3 botones numerados (`1`, `2`, `3`) de `LEVEL_BUTTONS`. Llamarla desde `draw()` cuando `state.phase === 'paused'`. Test manual: al pausar se ve `PAUSA` con tres botones `1 2 3`.
+19. En el handler de `click` del canvas, cuando `state.phase === 'paused'`, revisar si el punto cae dentro de algún rectángulo de `LEVEL_BUTTONS`; si es así, llamar `loadLevel( n )` para ese nivel (sin tocar `score` ni `lives`) y volver a `state.phase = 'playing'`. Test manual: clic en el botón `2` durante la pausa carga el nivel 2 con su layout y velocidad propios, conserva el score/vidas actuales, y el juego se reanuda.
 
 ---
 
@@ -161,6 +166,16 @@ Convenciones:
 - [ ] La tecla `M` silencia todos los sonidos; volver a pulsar `M` los reactiva.
 - [ ] El juego arranca con el sonido activado.
 - [ ] Tras la primera interacción del usuario (mover el mouse, una tecla o un clic) los sonidos se escuchan sin que el navegador los bloquee.
+- [ ] El nivel 1 se ve como un tablero de ajedrez sin huecos, con al menos dos colores alternados.
+- [ ] El nivel 2 tiene un hueco rectangular en el centro rodeado de bloques de varios colores.
+- [ ] El nivel 3 tiene forma de rombo/diamante, distinta a la del nivel 1 y a la del nivel 2.
+- [ ] Al limpiar el nivel 3 el overlay muestra `COMPLETASTE EL JUEGO` en vez de `GANASTE`.
+- [ ] Apretar `P` durante la partida pausa el juego y congela la pelota.
+- [ ] Apretar `Escape` durante la partida también pausa el juego (mismo efecto que `P`).
+- [ ] Con el juego pausado, apretar `P` o `Escape` lo reanuda donde estaba (misma posición y velocidad de pelota).
+- [ ] El overlay de pausa muestra el texto `PAUSA` y 3 botones numerados `1`, `2`, `3`.
+- [ ] Un clic en un botón numerado durante la pausa carga ese nivel (layout y velocidad correspondientes), conserva el score y las vidas actuales, y reanuda el juego.
+- [ ] `P` y `Escape` no tienen ningún efecto mientras `state.phase` es `'levelclear'`, `'gameover'` o `'win'`.
 
 ---
 
@@ -182,7 +197,16 @@ Convenciones:
 - **Sí:** ignorar el rechazo de `play()` con `.catch( () => {} )`. Antes del desbloqueo el navegador rechaza la promesa y no debe romper el frame.
 - **Sí:** mute con tecla `M`, sin persistencia ni indicador. Elección explícita del usuario.
 - **No:** pantalla de "clic para empezar". Cambiaría el arranque en movimiento fijado en el SPEC 01.
-- **No:** sonidos de game over, victoria, cambio de nivel o pérdida de vida. Sólo los dos mp3 que ya están en `assets/sounds/`.
+- **No:** sonidos de game over, victoria, cambio de nivel, pausa o selección de nivel. Sólo los dos mp3 que ya están en `assets/sounds/`.
+- **Sí:** 3 layouts concretos (tablero de ajedrez multicolor, muro con hueco central, rombo). El usuario pidió "patrones distintos" y "con colores" y delegó el diseño exacto; cada layout usa varias de las 6 letras de color y una estructura distinta a las otras dos.
+- **Sí:** texto `COMPLETASTE EL JUEGO` en mayúsculas. El usuario lo escribió en minúsculas pero la convención visual de los demás overlays (`GAME OVER`, `NIVEL N`) es mayúsculas; se mantiene esa consistencia tipográfica.
+- **Sí:** `P` y `Escape` funcionan como alias, cualquiera de las dos pausa o reanuda. Elección explícita del usuario ("las dos en conjunto" se interpretó como "ambas asignadas a la misma acción", no como una combinación simultánea) y es el patrón estándar en juegos.
+- **No:** combinación simultánea de `P` + `Escape`. Descartada en la clarificación; más costosa de trackear y menos habitual.
+- **Sí:** el selector de nivel vive dentro del mismo overlay de pausa (`PAUSA` + 3 botones), no en una pantalla aparte. Recomendación aceptada por el usuario; evita otra fase y otro disparador.
+- **Sí:** saltar de nivel desde el selector conserva `score` y `lives`. Recomendación aceptada; es el mismo comportamiento que el paso normal entre niveles del SPEC 03 original.
+- **Sí:** la pausa congela la simulación igual que `'levelclear'`/`'gameover'`/`'win'` (`updateBall` no corre). Recomendación aceptada; reutiliza el mecanismo ya existente en `frame()`.
+- **No:** pausar o abrir el selector durante `'levelclear'`, `'gameover'` o `'win'`. Esas fases ya tienen su propio overlay y flujo de clic; agregar pausa ahí complicaría sin necesidad real.
+- **No:** resaltar en el selector el botón del nivel actualmente en curso. No se pidió y no aporta a la función principal (saltar de nivel rápido).
 
 ---
 
@@ -195,6 +219,8 @@ Convenciones:
 | En `'levelclear'` la simulación sigue corriendo y la pelota rompe algo o cae. | `frame()` sólo llama `updateBall` en `phase === 'playing'`; `'levelclear'` congela la pelota igual que los overlays de game over y victoria. |
 | Un layout con más de 6 filas o más de 10 columnas dibuja bloques fuera del canvas o pisa el HUD. | `buildBlocks( layout )` recorre como máximo 6 filas y 10 columnas; los caracteres sobrantes se ignoran. Los 3 layouts de `LEVELS` respetan ese límite. |
 | `LEVEL_SPEED_STEP` acumulado deja la pelota tan rápida que hace túnel a través de bloques o paleta. | Con 3 niveles el factor máximo es `1.15 ** 2 ≈ 1.32`; la colisión por solapamiento de rectángulos del SPEC 01 tolera ese rango. |
+| El clic en un botón de `LEVEL_BUTTONS` durante la pausa se confunde con el clic de reinicio de `'gameover'`/`'win'`. | El handler de `click` distingue por `state.phase`; cada fase sólo evalúa sus propias coordenadas (botones en `'paused'`, reinicio en `'gameover'`/`'win'`). |
+| Pausar justo cuando termina una explosión o empieza `'levelclear'` deja al jugador en un estado inconsistente. | `P`/`Escape` sólo actúan sobre `'playing'` y `'paused'`; en `'levelclear'` se ignoran, así que la transición automática de nivel sigue su curso sin interferencia. |
 
 ---
 
@@ -203,10 +229,14 @@ Convenciones:
 - Más de 3 niveles, editor de niveles o carga desde archivo externo.
 - Bloques grises indestructibles o de varios golpes.
 - Sonido de rebote en el impacto que rompe un bloque.
-- Sonidos de game over, victoria, cambio de nivel o pérdida de vida; música de fondo.
+- Sonidos de game over, victoria, cambio de nivel, pausa o selección de nivel; música de fondo.
 - Indicador de mute en el HUD y persistencia de la preferencia.
 - Score final en el overlay de victoria y bonus de score por nivel o por vidas.
 - Pantalla previa de "clic para empezar".
 - Aumento de velocidad de la pelota dentro de un mismo nivel.
+- Pausar o abrir el selector de nivel durante `'levelclear'`, `'gameover'` o `'win'`.
+- Resaltar en el selector el nivel actualmente en curso.
+- Persistir entre recargas el nivel elegido con el selector.
+- Combinación simultánea de `P` + `Escape` como gesto distinto de cualquiera de las dos por separado.
 
 Cada uno de esos, si entra, va en su propio spec.
