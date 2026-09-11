@@ -5,7 +5,7 @@ const ctx = canvas.getContext( '2d' );
 
 // Estado global de la partida
 const state = {
-  phase: 'playing', // 'playing' | 'levelclear' | 'gameover' | 'win'
+  phase: 'playing', // 'playing' | 'levelclear' | 'paused' | 'gameover' | 'win'
   score: 0,
   lives: 3,
   level: 1,         // 1..3
@@ -14,40 +14,9 @@ const state = {
 // Velocidad de la pelota en px/frame
 const BALL_SPEED = 7.5;
 
-// Layout de cada nivel: una letra por color, '.' = hueco.
-// R red, P hotpink, M magenta, C cyan, G green, Y yellow.
-// Hasta 6 filas de hasta 10 columnas; caracteres sobrantes se ignoran.
-const LEVELS = [
-  [
-    'RRRRRRRRRR',
-    'PPPPPPPPPP',
-    'MMMMMMMMMM',
-    'CCCCCCCCCC',
-    'GGGGGGGGGG',
-    'YYYYYYYYYY',
-  ],
-  [
-    '....RR....',
-    '...PPPP...',
-    '..MMMMMM..',
-    '.CCCCCCCC.',
-    'GGGGGGGGGG',
-    'Y.Y.Y.Y.Y.',
-  ],
-  [
-    'R.R.R.R.R.',
-    '.P.P.P.P.P',
-    'C.C.C.C.C.',
-    '.M.M.M.M.M',
-    'G.G.G.G.G.',
-    '.Y.Y.Y.Y.Y',
-  ],
-];
-
-const LEVEL_LETTERS = { R: 'red', P: 'hotpink', M: 'magenta', C: 'cyan', G: 'green', Y: 'yellow' };
-const LEVEL_SPEED_STEP = 1.15;     // +15% de velocidad por nivel superado
-const LEVEL_CLEAR_DURATION = 1000; // ms que dura el overlay 'NIVEL N'
-let levelClearStart = 0;           // timestamp de rAF al entrar en 'levelclear'
+// LEVELS, LEVEL_LETTERS, LEVEL_SPEED_STEP y LEVEL_CLEAR_DURATION viven en
+// levels.js (cargado antes que este archivo en index.html).
+let levelClearStart = 0; // timestamp de rAF al entrar en 'levelclear'
 
 // Sonidos precargados; una instancia por efecto
 const SOUNDS = {
@@ -276,6 +245,10 @@ function isRightKey( code ) {
 window.addEventListener( 'keydown', ( e ) => {
   unlockAudio();
   if ( e.code === 'KeyM' ) muted = !muted;
+  if ( e.code === 'KeyP' || e.code === 'Escape' ) {
+    if ( state.phase === 'playing' ) state.phase = 'paused';
+    else if ( state.phase === 'paused' ) state.phase = 'playing';
+  }
   if ( isLeftKey( e.code ) ) keys.left = true;
   if ( isRightKey( e.code ) ) keys.right = true;
 } );
@@ -318,8 +291,9 @@ function draw( now ) {
 
   if ( state.phase === 'playing' ) drawHud();
   if ( state.phase === 'levelclear' ) drawOverlay( 'NIVEL ' + ( state.level + 1 ) );
+  if ( state.phase === 'paused' ) drawPauseOverlay();
   if ( state.phase === 'gameover' ) drawOverlay( 'GAME OVER' );
-  if ( state.phase === 'win' ) drawOverlay( 'GANASTE' );
+  if ( state.phase === 'win' ) drawOverlay( 'COMPLETASTE EL JUEGO' );
 }
 
 function drawOverlay( title ) {
@@ -332,6 +306,38 @@ function drawOverlay( title ) {
 
   ctx.font = '48px monospace';
   ctx.fillText( title, canvas.width / 2, canvas.height / 2 );
+}
+
+// Botones del selector de nivel dentro del overlay de pausa; uno por nivel,
+// centrados en fila debajo del título 'PAUSA'.
+const LEVEL_BUTTON_SIZE = 60;
+const LEVEL_BUTTON_GAP = 30;
+const LEVEL_BUTTONS = LEVELS.map( ( _, i ) => {
+  const n = i + 1;
+  const rowWidth = LEVELS.length * LEVEL_BUTTON_SIZE + ( LEVELS.length - 1 ) * LEVEL_BUTTON_GAP;
+  const startX = ( canvas.width - rowWidth ) / 2;
+  return {
+    n: n,
+    x: startX + i * ( LEVEL_BUTTON_SIZE + LEVEL_BUTTON_GAP ),
+    y: canvas.height / 2 + 60,
+    w: LEVEL_BUTTON_SIZE,
+    h: LEVEL_BUTTON_SIZE,
+  };
+} );
+
+// Overlay de pausa: reutiliza el fondo + título de drawOverlay y agrega
+// el selector de nivel numerado debajo.
+function drawPauseOverlay() {
+  drawOverlay( 'PAUSA' );
+
+  ctx.font = '28px monospace';
+  for ( let i = 0; i < LEVEL_BUTTONS.length; i++ ) {
+    const btn = LEVEL_BUTTONS[ i ];
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect( btn.x, btn.y, btn.w, btn.h );
+    ctx.fillText( String( btn.n ), btn.x + btn.w / 2, btn.y + btn.h / 2 );
+  }
 }
 
 // Tamaño y separación de cada icono de vida en el HUD
@@ -371,9 +377,22 @@ function resetGame() {
   loadLevel( 1 );
 }
 
-canvas.addEventListener( 'click', () => {
+canvas.addEventListener( 'click', ( e ) => {
   unlockAudio();
   if ( state.phase === 'gameover' || state.phase === 'win' ) resetGame();
+  if ( state.phase === 'paused' ) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    for ( let i = 0; i < LEVEL_BUTTONS.length; i++ ) {
+      const btn = LEVEL_BUTTONS[ i ];
+      if ( x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h ) {
+        loadLevel( btn.n );
+        state.phase = 'playing';
+        break;
+      }
+    }
+  }
 } );
 
 function frame( now ) {
